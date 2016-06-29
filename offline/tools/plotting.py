@@ -150,20 +150,40 @@ def plotsol(**kwargs):
     nodesdict = {}
     cdn_candidates = []
     starters_candiates = []
+    nodesSol = []
+    edgesSol = []
+    net = kwargs["net"]
+    if not net: #we don't display solution, only substrate
+        with open(os.path.join(RESULTS_FOLDER,"CDN.nodes.data"), 'r') as f:
+            data = f.read()
+            for line in data.split("\n"):
+                line = line.split("\t")
+                if len(line) == 2:
+                    cdn_candidates.append(line[1])
 
-    with open(os.path.join(RESULTS_FOLDER,"CDN.nodes.data"), 'r') as f:
-        data = f.read()
-        for line in data.split("\n"):
-            line = line.split("\t")
-            if len(line) == 2:
-                cdn_candidates.append(line[1])
+        with open(os.path.join(RESULTS_FOLDER,"starters.nodes.data"), 'r') as f:
+            data = f.read()
+            for line in data.split("\n"):
+                line = line.split("\t")
+                if len(line) == 2:
+                    starters_candiates.append(line[1])
 
-    with open(os.path.join(RESULTS_FOLDER,"starters.nodes.data"), 'r') as f:
-        data = f.read()
-        for line in data.split("\n"):
-            line = line.split("\t")
-            if len(line) == 2:
-                starters_candiates.append(line[1])
+        try:
+            with open(os.path.join(RESULTS_FOLDER,"solutions.data"), "r") as sol:
+                data = sol.read().split("\n")
+
+                for line in data:
+                    matches = re.findall("^x\$(.*)\$([^ \t]+)", line)
+                    if (len(matches) > 0):
+                        nodesSol.append(matches[0])
+                        continue
+                    matches = re.findall("^y\$(.*)\$(.*)\$(.*)\$([^ \t]+)", line)
+                    if (len(matches) > 0):
+                        edgesSol.append(matches[0])
+                        continue
+        except IOError:
+            print "no solution found, displaying topo only"
+
 
     with open(os.path.join(RESULTS_FOLDER,"substrate.edges.data"), 'r') as f:
         data = f.read()
@@ -180,22 +200,10 @@ def plotsol(**kwargs):
             if (len(line) == 2):
                 nodesdict[line[0]] = line[1]
 
-    with open(os.path.join(RESULTS_FOLDER,"solutions.data"), "r") as sol:
-        data = sol.read().split("\n")
-        nodesSol = []
-        edgesSol = []
-        for line in data:
-            matches = re.findall("^x\$(.*)\$([^ \t]+)", line)
-            if (len(matches) > 0):
-                nodesSol.append(matches[0])
-                continue
-            matches = re.findall("^y\$(.*)\$(.*)\$(.*)\$([^ \t]+)", line)
-            if (len(matches) > 0):
-                edgesSol.append(matches[0])
-                continue
 
     with open(os.path.join(RESULTS_FOLDER,"substrate.dot"), 'w') as f:
         f.write("graph{rankdir=LR;overlap = voronoi;splines = true;\n\n\n\n subgraph{\n\n\n")
+        #f.write("graph{rankdir=LR;\n\n\n\n subgraph{\n\n\n")
 
         avgcpu = reduce(lambda x, y: float(x) + float(y), nodesdict.values(), 0.0) / len(nodesdict)
 
@@ -206,8 +214,10 @@ def plotsol(**kwargs):
                 color = "red1"
             else:
                 color = "black"
-            f.write("%s [shape=box,style=filled,fillcolor=white,color=%s,width=%f,fontsize=15,pos=\"%d,%d\"];\n" % (
-            node[0], color, min(1, float(node[1]) / avgcpu), int(node[0][:2]), int(node[0][-2:])))
+            # f.write("%s [shape=box,style=filled,fillcolor=white,color=%s,width=%f,fontsize=15,pos=\"%d,%d\"];\n" % (
+            # node[0], color, min(1, float(node[1]) / avgcpu), int(node[0][:2]), int(node[0][-2:])))
+            f.write("%s [shape=box,style=filled,fillcolor=white,color=%s,width=%f,fontsize=15];\n" % (
+            node[0], color, min(1, float(node[1]) / avgcpu),))
 
         avgbw = [float(edge[2]) for edge in edges]
         avgbw = sum(avgbw) / len(avgbw)
@@ -217,6 +227,7 @@ def plotsol(**kwargs):
             availbw = float(edge[2])
             # f.write("%s->%s [ label=\"%d\", penwidth=\"%d\", fontsize=20];\n " % (edge[0], edge[1], float(edge[2]), 1+3*availbw/avgbw))
             f.write("%s--%s [penwidth=\"%d\",fontsize=15,len=2,label=\" \"];\n " % (edge[0], edge[1], 3))
+
 
         for node in nodesSol:
             if node[1] != "S0":
@@ -253,15 +264,25 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='1 iteration for solver')
     parser.add_argument('--svg', dest='dosvg', action='store_true')
     parser.add_argument('--service_link_linewidth', default=5, type=int)
+    parser.add_argument('--net', dest='net', action='store_true', help="print only the network")
+    parser.add_argument('--view', dest='view', action='store_true')
     args = parser.parse_args()
+
+    # if not args.net:
+    #     graphiz_exe="neato"
+    # else:
+    #     graphiz_exe="dot"
+
     dosvg = args.dosvg
-    plotsol(service_link_linewidth=args.service_link_linewidth)
+    plotsol(service_link_linewidth=args.service_link_linewidth,net=args.net)
     if not dosvg:
         file = tempfile.mkstemp(".pdf")[1]
         subprocess.Popen(["neato", os.path.join(RESULTS_FOLDER,"./substrate.dot"), "-Tpdf", "-o", file]).wait()
-        subprocess.Popen(["evince", file]).wait()
+        if args.view:
+            subprocess.Popen(["evince", file]).wait()
     else:
         file = tempfile.mkstemp(".svg")[1]
         subprocess.Popen(["neato", os.path.join(RESULTS_FOLDER,"./substrate.dot"), "-Tsvg", "-o", file]).wait()
-        subprocess.Popen(["eog", file]).wait()
-        shutil.copy(file, "./res.svg")
+        if args.view:
+            subprocess.Popen(["eog", file]).wait()
+        shutil.copy(file, os.path.join(RESULTS_FOLDER, "./res.svg"))

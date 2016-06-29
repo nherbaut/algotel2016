@@ -34,10 +34,23 @@ python -m offline.tools.simu
 python -m offline.tools.step
 ```
 
-plotting:
+1 step simulation, deterministic:
 ```
-python -m offline.tools.plotting
+python -m offline.tools.dstep --start 0101 0505 --cdn  0504 --vhg 2 --grid 5x5
 ```
+
+1 step simulation, deterministic, topo only:
+```
+python -m offline.tools.dstep --topo  --grid 5x5
+```
+
+
+plotting with pdf viewer:
+```
+python -m offline.tools.plotting --view
+```
+
+
 
 # Docker image
 

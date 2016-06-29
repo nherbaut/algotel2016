@@ -54,9 +54,6 @@ def generate_random_slas(rs, substrate, count=1000,start_count=None,end_count=2,
     for i in range(0, count):
 
 
-
-
-
         bitrate = getRandomBitrate(rs)
 
         #bitrate = rs.choice([   400000, 500000, 600000])
@@ -74,7 +71,6 @@ def generate_random_slas(rs, substrate, count=1000,start_count=None,end_count=2,
             start_count_drawn=start_count
 
         draws = rs.choice(substrate.nodesdict.keys(), size=start_count_drawn+end_count, replace=False).tolist()
-
 
         start=[]
         cdn=[]

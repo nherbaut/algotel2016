@@ -101,6 +101,27 @@ class Substrate:
 
         return cls(edges, nodesdict)
 
+    @classmethod
+    def fromSpecTree(cls,width,height,bw,delay,cpu):
+        edges = []
+        nodesdict = {}
+
+        for i in range(1,width+1):
+            for j in range(1,height+1):
+                nodesdict[str("%02d%02d"%(i,j))] = cpu
+
+        for i in range(1,width+1):
+            for j in range(1,height+1):
+                if j+1 <= height:
+                    edges.append(("%02d%02d"%(i,j), "%02d%02d"%(i,j+1), bw, delay))
+                if i+1 <= width:
+                    edges.append(("%02d%02d"%(i,j), "%02d%02d"%(i+1,j), bw, delay))
+                if j+1 <= height and i+1 <= width:
+                    edges.append(("%02d%02d"%(i,j), "%02d%02d"%(i+1,j+1), bw, delay))
+
+
+        return cls(edges, nodesdict)
+
 
 
 
